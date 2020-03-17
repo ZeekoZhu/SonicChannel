@@ -1,0 +1,17 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>netstandard2.1</TargetFramework>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="Configuration.fs" />
+    <Compile Include="SonicCommand.fs" />
+    <Compile Include="MessageTransceiver.fs" />
+    <Compile Include="Commands\Start.fs" />
+    <Compile Include="Commands\Push.fs" />
+    <Compile Include="Commands\Pop.fs" />
+    <Compile Include="Commands\Count.fs" />
+    <Compile Include="SonicChannel.fs" />
+  </ItemGroup>
+  <Import Project="..\.paket\Paket.Restore.targets" />
+</Project>

@@ -1,0 +1,5 @@
+FSharp.Core
+TaskBuilder.fs
+System.IO.Pipelines
+FSharpx.Extras
+FsToolkit.ErrorHandling

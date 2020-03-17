@@ -1,0 +1,21 @@
+storage: none
+version 5.242.2
+source https://api.nuget.org/v3/index.json
+source https://www.myget.org/F/zeekoget/api/v3/index.json
+framework: auto-detect
+
+nuget TaskBuilder.fs ~> 2.2 prerelease
+nuget xunit
+nuget xunit.runner.visualstudio
+nuget FSharpx.Extras
+nuget FsToolkit.ErrorHandling
+nuget FSharp.Core
+nuget System.IO.Pipelines
+// [ FAKE GROUP ]
+group Build
+    storage: none
+    source https://api.nuget.org/v3/index.json
+    source https://www.myget.org/F/zeekoget/api/v3/index.json
+    framework: netstandard2.0
+    nuget Fake.DotNet.Cli
+    nuget MyFakeTools 0.0.16
