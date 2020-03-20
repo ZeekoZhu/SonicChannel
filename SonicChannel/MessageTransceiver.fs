@@ -92,7 +92,6 @@ type MessageTransceiver(client: TcpClient, optionReader: IOptionReader) =
                     waiting <- None
                 | Finished ->
                     waiting <- None
-                | _ -> ()
                 Some cb
 
         let checkWaiting () =

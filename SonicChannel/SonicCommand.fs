@@ -23,7 +23,7 @@ module CommandTextBuilder =
         |> Option.map (fun x -> x.Value)
 
 
-    let query collection bucket terms limitOpt offsetOpt langOpt =
+    let queryCmd collection bucket terms limitOpt offsetOpt langOpt =
         sprintf """QUERY %s %s "%s" %s %s %s""" collection bucket terms
             (limit limitOpt) (offset offsetOpt) (lang langOpt)
 
@@ -44,6 +44,7 @@ module CommandTextBuilder =
         escapePatterns
         |> List.fold escape text
     let defaultEmpty = Option.map escapeCmdText >> Option.defaultValue ""
+    let regexOpt = RegexOptions.IgnoreCase ||| RegexOptions.Compiled
 
 
 type ChannelMode =
@@ -57,22 +58,34 @@ type ChannelMode =
         | Control -> "control"
 
 type SonicCommandState =
-    | Waiting
     | Pending
     | Finished
 type MessageHandleResult =
     | Handled of SonicCommandState
     | Bypass
 type ISonicCommand =
-    abstract ToString: unit -> string
+    abstract ToCommandString: unit -> string
     abstract HandleWaitingMsg: string -> MessageHandleResult
     abstract HandlePendingMsg: string -> MessageHandleResult
 
 [<AbstractClass>]
-type internal SonicCommand<'r>() =
+type SonicCommand<'r>() =
+    abstract ToCommandString: unit -> string
+    abstract HandlePendingMsg: string -> MessageHandleResult
+    abstract MatchResult : string -> 'r option
+    member val Result: 'r option = None with get, set
+    override this.ToString () =
+        this.ToCommandString()
     interface ISonicCommand with
-        abstract Result : 'r option with get, set
-        abstract MatchResult : string -> 'r option
+        member this.HandleWaitingMsg str =
+            match this.MatchResult str with
+            | Some result ->
+                this.Result <- Some result
+                Finished |> Handled
+            | None -> Bypass
+
+        member this.HandlePendingMsg str = this.HandlePendingMsg str
+        member this.ToCommandString () = this.ToCommandString ()
 
 type ChannelConfig =
     { Mode: ChannelMode

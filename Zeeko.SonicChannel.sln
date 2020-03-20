@@ -7,6 +7,12 @@ Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "SonicChannel", "SonicChanne
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "SonicConsole", "SonicConsole\SonicConsole.fsproj", "{746FD83C-5839-452D-A85B-07C80B32471B}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Paket", "Paket", "{63DF031C-DE38-4159-A1A9-88BBF2D31E3B}"
+ProjectSection(SolutionItems) = preProject
+	paket.dependencies = paket.dependencies
+	paket.lock = paket.lock
+EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
