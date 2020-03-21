@@ -1,5 +1,6 @@
 namespace SonicChannel
 
+open System
 open Configuration
 open System
 open System.Buffers
@@ -11,6 +12,7 @@ open System.Threading.Tasks
 open FSharp.Control.Tasks.V2.ContextInsensitive
 open FSharpx
 open Microsoft.Extensions.Logging
+open SonicChannel.Commands
 
 module Util =
     let readLinesAsync (stream: Stream) (transceiverOption: TransceiverOption) (onLineReceived: string -> unit Task) (ct: CancellationToken) =
@@ -36,7 +38,8 @@ module Util =
             }
         let readPipe () =
             let readLine (bytes: byte array) =
-                encoding.GetString bytes
+                let str = encoding.GetString bytes
+                str.TrimEnd ('\r')
             task {
                 let mutable completed = false
                 while not completed do
@@ -82,15 +85,32 @@ type MessageTransceiver
     let encoding = opt.Encoding
     let cts = new CancellationTokenSource()
 
+    let disconnect () =
+        if not disposed && client.Connected then
+            cts.Cancel()
+            state
+            |> Option.map (fun x -> x.CommandQueue)
+            |> Option.iter
+                (fun x -> x.CancelAllTask())
+            client.Close()
     let cleanup (disposing: bool) =
         if not disposed then
             disposed <- true
             if disposing then
-                cts.Cancel()
                 cts.Dispose()
                 match state with
                 | Some x -> x.Dispose()
                 | _ -> ()
+    let onMsgReceived (msg: string) =
+        let state = ensureInitialized ()
+        if msg.StartsWith("ENDED", StringComparison.OrdinalIgnoreCase) then
+            if msg.Equals("ended quit", StringComparison.OrdinalIgnoreCase) = false
+            then logger.LogWarning("Connection closed by host: {Message}", msg)
+            disconnect ()
+            Task.FromResult ()
+        else
+            logger.LogDebug("Received: {Message}", msg)
+            state.CommandQueue.OnResponseArrived msg
     member _.InitializeAsync () =
         let connOpt = optionReader.ConnectionOption()
         task {
@@ -98,25 +118,26 @@ type MessageTransceiver
                 do! client.ConnectAsync(connOpt.Host, connOpt.Port)
             let stream = client.GetStream()
             let writer = new StreamWriter(stream, encoding, bufferSize, true)
-            writer.AutoFlush <- true
             let sendMsgFn (msg: string) =
                 logger.LogDebug("Send: {Message}", msg)
-                writer.WriteLineAsync msg
-                |> Task.ToTaskUnit
+                if msg = "NO EXEC" then Task.FromResult()
+                else
+                    task {
+                        do! writer.WriteLineAsync msg
+                        do! writer.FlushAsync()
+                    }
             let commandQueueLogger = loggerFactory.CreateLogger<CommandQueue>()
             let commandQueue = new CommandQueue(sendMsgFn, commandQueueLogger)
             commandQueue.Initialize()
-            let onMsgArrived (msg: string) =
-                logger.LogDebug("Received: {Message}", msg)
-                commandQueue.OnResponseArrived msg
             let receiveMsgTask () =
                 Util.readLinesAsync
                     stream
                     (optionReader.TransceiverOption())
-                    onMsgArrived
+                    onMsgReceived
                     cts.Token
             Task.Run<unit> (Func<Task<unit>> receiveMsgTask)
             |> ignore
+            commandQueue.ExecuteCommandAsync (ConnectCommand()) |> ignore
             state <- Some { Stream = stream; Writer = writer; CommandQueue = commandQueue }
         }
     member _.SendAsync(cmd) =

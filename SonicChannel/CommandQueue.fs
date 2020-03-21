@@ -5,6 +5,7 @@ open System.Threading.Tasks
 open FSharp.Control.Tasks.V2.ContextInsensitive
 open FSharpx
 open Microsoft.Extensions.Logging
+open SonicChannel.Commands
 open SonicChannel.SonicCommand
 type CSList<'a> = System.Collections.Generic.List<'a>
 
@@ -88,10 +89,18 @@ type CommandQueue
             }
         receiveCmdTask
         |> Async.AwaitTask
+    let cancelAllTask () =
+        match waiting with
+        | Some cb -> cb.Callback.SetCanceled()
+        | None -> ()
+        pendingQueue
+        |> Seq.iter (fun cb -> cb.Callback.SetCanceled())
+
     let cleanup (disposing: bool) =
         if not disposed then
             disposed <- true
             if disposing then
+                waitingLock.Release() |> ignore
                 waitingLock.Dispose()
 
     member _.Initialize() =
@@ -106,6 +115,8 @@ type CommandQueue
             let! task = mailbox.PostAndAsyncReply(fun ch -> cmd, ch)
             return! task.Task
         }
+    member _.CancelAllTask () =
+        cancelAllTask()
     interface IDisposable with
         override this.Dispose() =
             cleanup true
