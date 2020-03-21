@@ -35,3 +35,12 @@ type QuitCommand() =
         override _.Response = "OK"
         override _.ToCommandString () =
             sprintf "QUIT"
+
+type ConnectCommand() =
+    inherit SonicCommand<unit>() with
+        override _.ToCommandString () = "NO EXEC"
+        override _.HandlePendingMsg _ = failwith "Invalid state pending"
+        override _.MatchResult msg =
+            let regex = Regex("^CONNECTED", regexOpt)
+            tryMatch regex msg
+            |> Option.map ignore
