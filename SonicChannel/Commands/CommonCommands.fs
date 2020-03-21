@@ -5,8 +5,9 @@ open System.Text.RegularExpressions
 open FsToolkit.ErrorHandling
 open SonicChannel.SonicCommand
 open SonicChannel.SonicCommand.CommandTextBuilder
+open SonicChannel.Commands.AbstractCommands
 
-module internal StartCommand =
+module internal Patterns =
     let startedRegex =
         Regex ("^STARTED \w+ protocol\((?<protocol>\d+)\) buffer\((?<buffer>\d+)\)$",
                regexOpt)
@@ -17,7 +18,7 @@ type StartCommand(mode: ChannelMode, password: string option) =
             let createConfig x =
                 { Mode = mode
                   BufferSize = x }
-            tryMatch StartCommand.startedRegex started
+            tryMatch Patterns.startedRegex started
             |> Option.bind (tryGetGroup "buffer")
             |> Option.bind (Option.tryParse<int>)
             |> Option.map createConfig
@@ -28,3 +29,9 @@ type StartCommand(mode: ChannelMode, password: string option) =
                 |> Option.defaultValue String.Empty
             sprintf "START %s %s" (mode.ToString()) password
         override _.HandlePendingMsg _ = failwith "Invalid state pending"
+
+type QuitCommand() =
+    inherit ConstantResultCommand() with
+        override _.Response = "OK"
+        override _.ToCommandString () =
+            sprintf "QUIT"

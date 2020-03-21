@@ -6,7 +6,8 @@ open SonicChannel.SonicCommand.CommandTextBuilder
 
 
 type PushCommand(collection: string, bucket: string, object: string, text: string, lang: string option) =
-    inherit OkResultCommand() with
+    inherit ConstantResultCommand() with
+        override _.Response = "OK"
         override _.ToCommandString() =
             sprintf """PUSH %s %s %s "%s" %s"""
                 (escapeCmdText collection)

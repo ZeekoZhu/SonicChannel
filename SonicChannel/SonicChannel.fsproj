@@ -8,7 +8,7 @@
     <Compile Include="SonicCommand.fs" />
     <Compile Include="MessageTransceiver.fs" />
     <Compile Include="Commands\AbstractCommands.fs" />
-    <Compile Include="Commands\Start.fs" />
+    <Compile Include="Commands\CommonCommands.fs" />
     <Compile Include="Commands\IngestCommands.fs" />
     <Compile Include="Commands\QueryCommands.fs" />
     <Compile Include="Commands\ControlCommand.fs" />

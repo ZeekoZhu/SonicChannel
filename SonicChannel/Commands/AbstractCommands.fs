@@ -1,19 +1,20 @@
 module SonicChannel.Commands.AbstractCommands
+open System
 open System.Text.RegularExpressions
 open FsToolkit.ErrorHandling
 open SonicChannel.SonicCommand
 open SonicChannel.SonicCommand.CommandTextBuilder
 
 [<AbstractClass>]
-type OkResultCommand() =
+type ConstantResultCommand() =
     abstract ToCommandString : unit -> string
+    abstract Response : string
     interface ISonicCommand with
         member this.ToCommandString () = this.ToCommandString()
         member _.HandleWaitingMsg msg =
-            match msg with
-            | "OK" ->
+            if String.Equals(msg, StringComparison.OrdinalIgnoreCase) then
                 SonicCommandState.Finished |> Handled
-            | _ -> Bypass
+            else Bypass
         member _.HandlePendingMsg _ = failwith "Invalid state pending"
 
 [<AbstractClass>]
