@@ -2,3 +2,6 @@ FSharp.Core
 TaskBuilder.fs
 FSharpx.Extras
 FsToolkit.ErrorHandling
+Microsoft.Extensions.DependencyInjection
+Microsoft.Extensions.Logging
+Microsoft.Extensions.Logging.Console

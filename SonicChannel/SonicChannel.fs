@@ -3,17 +3,23 @@ namespace SonicChannel
 open System
 open System.Net.Sockets
 open System.Threading.Tasks
+open Microsoft.Extensions.Logging
 open SonicChannel.Configuration
 open SonicChannel.SonicCommand
 open SonicChannel.Commands
 open FSharp.Control.Tasks.V2.ContextInsensitive
 
 [<AbstractClass>]
-type SonicChannel(client: TcpClient, optionReader: IOptionReader) =
+type SonicChannel
+    (
+        client: TcpClient,
+        optionReader: IOptionReader,
+        loggerFactory: ILoggerFactory
+    ) =
     let connOpt = optionReader.ConnectionOption ()
     let mutable disposed = false
     let mutable started = false;
-    let transceiver = new MessageTransceiver(client, optionReader)
+    let transceiver = new MessageTransceiver(client, optionReader, loggerFactory)
     let cleanup disposing =
         if not disposed then
             disposed <- true
@@ -36,15 +42,15 @@ type SonicChannel(client: TcpClient, optionReader: IOptionReader) =
             cleanup true
             GC.SuppressFinalize this
 
-type IngestChannel(client: TcpClient, optionReader) =
-    inherit SonicChannel(client, optionReader) with
+type IngestChannel(client, optionReader, loggerFactory) =
+    inherit SonicChannel(client, optionReader, loggerFactory) with
         override _.StartAsync() =
             base.StartAsync(ChannelMode.Ingest)
-type SearchChannel(client: TcpClient, optionReader) =
-    inherit SonicChannel(client, optionReader) with
+type SearchChannel(client, optionReader, loggerFactory) =
+    inherit SonicChannel(client, optionReader, loggerFactory) with
         override _.StartAsync() =
             base.StartAsync(ChannelMode.Search)
-type ControlChannel(client: TcpClient, optionReader) =
-    inherit SonicChannel(client, optionReader) with
+type ControlChannel(client, optionReader, loggerFactory) =
+    inherit SonicChannel(client, optionReader, loggerFactory) with
         override _.StartAsync() =
             base.StartAsync(ChannelMode.Control)

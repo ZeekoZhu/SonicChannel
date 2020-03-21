@@ -11,6 +11,10 @@ nuget FSharpx.Extras
 nuget FsToolkit.ErrorHandling
 nuget FSharp.Core
 nuget System.IO.Pipelines
+nuget Microsoft.Extensions.DependencyInjection
+nuget Microsoft.Extensions.Logging.Abstractions
+nuget Microsoft.Extensions.Logging
+nuget Microsoft.Extensions.Logging.Console
 // [ FAKE GROUP ]
 group Build
     storage: none

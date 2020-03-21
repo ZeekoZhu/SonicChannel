@@ -10,6 +10,7 @@ open System.Threading
 open System.Threading.Tasks
 open FSharp.Control.Tasks.V2.ContextInsensitive
 open FSharpx
+open Microsoft.Extensions.Logging
 
 module Util =
     let readLinesAsync (stream: Stream) (transceiverOption: TransceiverOption) (onLineReceived: string -> unit Task) (ct: CancellationToken) =
@@ -30,7 +31,8 @@ module Util =
                         writer.Advance bytesRead
                         let! flushResult = writer.FlushAsync(ct)
                         if flushResult.IsCompleted
-                        then flag <- false
+                        then
+                            flag <- false
             }
         let readPipe () =
             let readLine (bytes: byte array) =
@@ -64,8 +66,14 @@ type TransceiverContext =
     with member this.Dispose() =
             this.Writer.Dispose()
             (this.CommandQueue :> IDisposable).Dispose()
-type MessageTransceiver(client: TcpClient, optionReader: IOptionReader) =
+type MessageTransceiver
+    (
+        client: TcpClient,
+        optionReader: IOptionReader,
+        loggerFactory: ILoggerFactory
+    ) =
     let opt = optionReader.TransceiverOption()
+    let logger = loggerFactory.CreateLogger<MessageTransceiver>()
     let mutable disposed = false
     let mutable state : TransceiverContext option = None
     let ensureInitialized () =
@@ -92,15 +100,20 @@ type MessageTransceiver(client: TcpClient, optionReader: IOptionReader) =
             let writer = new StreamWriter(stream, encoding, bufferSize, true)
             writer.AutoFlush <- true
             let sendMsgFn (msg: string) =
+                logger.LogDebug("Send: {Message}", msg)
                 writer.WriteLineAsync msg
                 |> Task.ToTaskUnit
-            let commandQueue = new CommandQueue(sendMsgFn)
+            let commandQueueLogger = loggerFactory.CreateLogger<CommandQueue>()
+            let commandQueue = new CommandQueue(sendMsgFn, commandQueueLogger)
             commandQueue.Initialize()
+            let onMsgArrived (msg: string) =
+                logger.LogDebug("Received: {Message}", msg)
+                commandQueue.OnResponseArrived msg
             let receiveMsgTask () =
                 Util.readLinesAsync
                     stream
                     (optionReader.TransceiverOption())
-                    commandQueue.OnResponseArrived
+                    onMsgArrived
                     cts.Token
             Task.Run<unit> (Func<Task<unit>> receiveMsgTask)
             |> ignore

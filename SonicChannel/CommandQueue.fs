@@ -4,13 +4,18 @@ open System.Threading
 open System.Threading.Tasks
 open FSharp.Control.Tasks.V2.ContextInsensitive
 open FSharpx
+open Microsoft.Extensions.Logging
 open SonicChannel.SonicCommand
 type CSList<'a> = System.Collections.Generic.List<'a>
 
 type SonicCommandCallback =
     { Command: ISonicCommand; Callback: TaskCompletionSource<ISonicCommand>; }
 
-type CommandQueue(sendMsgFn: string -> Task<unit>) =
+type CommandQueue
+    (
+        sendMsgFn: string -> Task<unit>,
+        logger: ILogger<CommandQueue>
+    ) =
     let mutable disposed = false
     let mutable waiting: SonicCommandCallback option = None
     let mutable mailbox: MailboxProcessor<_> option = None
@@ -48,7 +53,7 @@ type CommandQueue(sendMsgFn: string -> Task<unit>) =
         checkWaiting ()
         |> Option.orElseWith checkPendingQueue
         |> function
-        | None -> printfn "Warning: message not handled"
+        | None -> logger.LogWarning ("Not handled: {Message}", line)
         | Some cb -> cb.Callback.SetResult cb.Command
 
     let acquireWaitingLock fn p =
@@ -75,7 +80,9 @@ type CommandQueue(sendMsgFn: string -> Task<unit>) =
                         Callback = TaskCompletionSource()
                     }
                     do! setWaiting cb
-                    do! sendMsgFn (cmd.ToCommandString())
+                    let msg = cmd.ToCommandString()
+                    logger.LogDebug("Execute: {Message}", msg)
+                    do! sendMsgFn msg
                     ch.Reply cb.Callback
                 return ()
             }

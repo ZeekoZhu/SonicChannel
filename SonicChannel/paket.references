@@ -3,3 +3,4 @@ TaskBuilder.fs
 System.IO.Pipelines
 FSharpx.Extras
 FsToolkit.ErrorHandling
+Microsoft.Extensions.Logging.Abstractions
