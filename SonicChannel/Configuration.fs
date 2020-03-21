@@ -11,7 +11,7 @@ type TransceiverOption =
     { Encoding: Encoding
       BufferSize: int }
     with
-        static member Default = { Encoding = Encoding.UTF8; BufferSize = 1024 * 8 }
+        static member Default = { Encoding = UTF8Encoding(false); BufferSize = 1024 * 8 }
 
 type IOptionReader =
     abstract member ConnectionOption : unit -> ChannelConnection
