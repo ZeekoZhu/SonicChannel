@@ -1,5 +1,7 @@
 module SonicChannel.SonicCommand
 
+open System
+open System.Text
 open System.Text.RegularExpressions
 
 module CommandTextBuilder =
@@ -22,7 +24,7 @@ module CommandTextBuilder =
         |> Option.filter matched
         |> Option.map (fun x -> x.Value)
 
-
+    // todo: simplify
     let queryCmd collection bucket terms limitOpt offsetOpt langOpt =
         sprintf """QUERY %s %s "%s" %s %s %s""" collection bucket terms
             (limit limitOpt) (offset offsetOpt) (lang langOpt)
@@ -43,6 +45,23 @@ module CommandTextBuilder =
             pattern.Replace(text, replacement)
         escapePatterns
         |> List.fold escape text
+    let splitTextChunks (bufferSize: int) (encoding: Encoding) (text: string) =
+        // reserve 50% space for other parts of command
+        let chunkSize =
+            Math.Floor((float bufferSize) * 0.5) / (float (encoding.GetMaxByteCount(1)))
+            |> int
+        let rec split (remain: ReadOnlyMemory<char>) =
+            seq {
+                if remain.Length > chunkSize
+                then
+                    yield remain.Slice(0, chunkSize).ToString()
+                    yield! split (remain.Slice(chunkSize))
+                else
+                    yield remain.ToString()
+            }
+        split (text.AsMemory())
+
+
     let defaultEmpty = Option.map escapeCmdText >> Option.defaultValue ""
     let regexOpt = RegexOptions.IgnoreCase ||| RegexOptions.Compiled
 

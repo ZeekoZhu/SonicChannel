@@ -24,19 +24,31 @@ type CommandQueue
         Option.getOrRaise (InvalidOperationException("Transceiver not initialized")) mailbox
     let waitingLock = new SemaphoreSlim(1, 1)
     let pendingQueue = CSList<SonicCommandCallback>()
+    let onQuit = Event<unit>()
+    let cancelAllTasks () =
+        match waiting with
+        | Some cb -> cb.Callback.SetCanceled()
+        | None -> ()
+        pendingQueue
+        |> Seq.iter (fun cb -> cb.Callback.SetCanceled())
+    do onQuit.Publish.Add cancelAllTasks
+    let setWaiting cb =
+        match waiting with
+        | None -> waiting <- Some cb
+        | Some _ ->
+            logger.LogError "Other command is waiting"
+            failwith "Other command is waiting"
+    let filterMsg (line: string) fn =
+        if line.StartsWith("CONNECTED", StringComparison.OrdinalIgnoreCase) then
+            ()
+        fn line
     let onResponseArrived (line: string) =
         let handleMessage (cb: SonicCommandCallback) (handleFn: string -> MessageHandleResult) =
             let handleResult = handleFn line
             match handleResult with
             | Bypass -> None
             | Handled state ->
-                match state with
-                | Pending ->
-                    pendingQueue.Add cb
-                    waiting <- None
-                | Finished ->
-                    waiting <- None
-                Some cb
+                Some (cb, state)
 
         let checkWaiting () =
             waiting
@@ -48,66 +60,78 @@ type CommandQueue
                 |> Seq.map (fun cb -> handleMessage cb cb.Command.HandlePendingMsg)
                 |> Seq.tryFind (Option.isSome)
                 |> Option.bind id
-            cb |> Option.iter (fun x -> pendingQueue.Remove x |> ignore)
+            cb |> Option.iter (fun (x, _) -> pendingQueue.Remove x |> ignore)
             cb
 
-        checkWaiting ()
+        logger.LogDebug("CQ checking {msg}", line)
+        let waitingHandled = checkWaiting ()
+        waitingHandled
+        |> Option.iter (fun _ ->
+            waiting <- None
+            waitingLock.Release() |> ignore
+            logger.LogDebug ("Release waiting CNT: {0}", waitingLock.CurrentCount)
+        )
+        waitingHandled
         |> Option.orElseWith checkPendingQueue
         |> function
-        | None -> logger.LogWarning ("Not handled: {Message}", line)
-        | Some cb -> cb.Callback.SetResult cb.Command
+        | None ->
+            printfn "unhandled %s" line
+            if line.StartsWith ("ENDED", StringComparison.OrdinalIgnoreCase) then
+                logger.LogWarning ("Connection closed by host: {Message}", line)
+                onQuit.Trigger ()
+            else
+                logger.LogWarning ("Not handled: {Message}", line)
+        | Some (cb, state) ->
+            match state with
+            | Finished ->
+                logger.LogDebug ("Command finished: {0}",(cb.Command.ToCommandString()))
+                cb.Callback.SetResult cb.Command
+                match cb.Command with
+                | :? QuitCommand ->
+                    onQuit.Trigger()
+                | _ -> ()
+            | Pending ->
+                pendingQueue.Add cb
 
-    let acquireWaitingLock fn p =
-        task {
-            do! waitingLock.WaitAsync()
-            let result = fn p
-            waitingLock.Release() |> ignore
-            return result
-        }
-    let setWaiting cb =
-        acquireWaitingLock
-            ( fun () ->
-                match waiting with
-                | None -> waiting <- Some cb
-                | Some _ -> failwith "Other command is waiting"
-            ) ()
     let receive (inbox: MailboxProcessor<ISonicCommand * AsyncReplyChannel<TaskCompletionSource<_>>>) =
         let receiveCmdTask =
             task {
                 while not disposed do
                     let! (cmd, ch) = inbox.Receive()
+                    logger.LogDebug("Received CMD: {Message}", cmd.ToCommandString())
                     let cb = {
                         Command = cmd
                         Callback = TaskCompletionSource()
                     }
-                    do! setWaiting cb
+                    logger.LogDebug ("try set waiting, CNT {0}", waitingLock.CurrentCount)
+                    do! waitingLock.WaitAsync()
+                    logger.LogDebug ("set waiting")
+                    setWaiting cb
                     let msg = cmd.ToCommandString()
-                    logger.LogDebug("Execute: {Message}", msg)
                     do! sendMsgFn msg
                     ch.Reply cb.Callback
                 return ()
             }
         receiveCmdTask
         |> Async.AwaitTask
-    let cancelAllTask () =
-        match waiting with
-        | Some cb -> cb.Callback.SetCanceled()
-        | None -> ()
-        pendingQueue
-        |> Seq.iter (fun cb -> cb.Callback.SetCanceled())
 
     let cleanup (disposing: bool) =
         if not disposed then
             disposed <- true
             if disposing then
-                waitingLock.Release() |> ignore
+                logger.LogDebug("Command Queue disposed")
+                if waitingLock.CurrentCount = 0 then
+                    waitingLock.Release() |> ignore
                 waitingLock.Dispose()
 
     member _.Initialize() =
         mailbox <- MailboxProcessor.Start receive |> Some
 
+    [<CLIEvent>]
+    member _.OnQuit = onQuit.Publish
+
     member _.OnResponseArrived msg =
-        acquireWaitingLock onResponseArrived msg
+        filterMsg msg onResponseArrived
 
     member _.ExecuteCommandAsync cmd =
         let mailbox = ensureInitialized ()
@@ -116,7 +140,7 @@ type CommandQueue
             return! task.Task
         }
     member _.CancelAllTask () =
-        cancelAllTask()
+        cancelAllTasks()
     interface IDisposable with
         override this.Dispose() =
             cleanup true

@@ -2,7 +2,6 @@ namespace SonicChannel
 
 open System
 open Configuration
-open System
 open System.Buffers
 open System.IO
 open System.IO.Pipelines
@@ -12,10 +11,9 @@ open System.Threading.Tasks
 open FSharp.Control.Tasks.V2.ContextInsensitive
 open FSharpx
 open Microsoft.Extensions.Logging
-open SonicChannel.Commands
 
 module Util =
-    let readLinesAsync (stream: Stream) (transceiverOption: TransceiverOption) (onLineReceived: string -> unit Task) (ct: CancellationToken) =
+    let readLinesAsync (stream: NetworkStream) (transceiverOption: TransceiverOption) (onLineReceived: string -> unit Task) (ct: CancellationToken) =
         let bufferSize = transceiverOption.BufferSize
         let encoding = transceiverOption.Encoding
         let pipe = Pipe()
@@ -23,18 +21,17 @@ module Util =
         let reader = pipe.Reader
         let fillPipe () =
             task {
-                let mutable flag = true
-                while flag && not ct.IsCancellationRequested do
+                while not ct.IsCancellationRequested do
                     let memory = writer.GetMemory(bufferSize)
-                    let! bytesRead = stream.ReadAsync (memory, ct)
-                    if bytesRead = 0
-                    then flag <- false
+                    if stream.DataAvailable
+                    then
+                        let! bytesRead = stream.ReadAsync (memory, ct)
+                        if bytesRead <> 0 then
+                            writer.Advance bytesRead
+                            let! _ = writer.FlushAsync(ct)
+                            ()
                     else
-                        writer.Advance bytesRead
-                        let! flushResult = writer.FlushAsync(ct)
-                        if flushResult.IsCompleted
-                        then
-                            flag <- false
+                        do! Task.Delay(TimeSpan.FromMilliseconds(10.0))
             }
         let readPipe () =
             let readLine (bytes: byte array) =
@@ -48,7 +45,7 @@ module Util =
                     let position = buffer.PositionOf(byte '\n')
                     if position.HasValue then
                         do! buffer.Slice(0, position.Value).ToArray() |> readLine |> onLineReceived
-                        reader.AdvanceTo (buffer.GetPosition(1L, position.Value), buffer.End)
+                        reader.AdvanceTo (buffer.GetPosition(1L, position.Value))
                     completed <- readResult.IsCompleted
             }
         let fillTask = fillPipe ()
@@ -103,14 +100,9 @@ type MessageTransceiver
                 | _ -> ()
     let onMsgReceived (msg: string) =
         let state = ensureInitialized ()
-        if msg.StartsWith("ENDED", StringComparison.OrdinalIgnoreCase) then
-            if msg.Equals("ended quit", StringComparison.OrdinalIgnoreCase) = false
-            then logger.LogWarning("Connection closed by host: {Message}", msg)
-            disconnect ()
-            Task.FromResult ()
-        else
-            logger.LogDebug("Received: {Message}", msg)
-            state.CommandQueue.OnResponseArrived msg
+        logger.LogDebug("Received: {Message}", msg)
+        state.CommandQueue.OnResponseArrived msg
+        Task.FromResult ()
     member _.InitializeAsync () =
         let connOpt = optionReader.ConnectionOption()
         task {
@@ -128,6 +120,7 @@ type MessageTransceiver
                     }
             let commandQueueLogger = loggerFactory.CreateLogger<CommandQueue>()
             let commandQueue = new CommandQueue(sendMsgFn, commandQueueLogger)
+            commandQueue.OnQuit.Add disconnect
             commandQueue.Initialize()
             let receiveMsgTask () =
                 Util.readLinesAsync
@@ -137,7 +130,6 @@ type MessageTransceiver
                     cts.Token
             Task.Run<unit> (Func<Task<unit>> receiveMsgTask)
             |> ignore
-            commandQueue.ExecuteCommandAsync (ConnectCommand()) |> ignore
             state <- Some { Stream = stream; Writer = writer; CommandQueue = commandQueue }
         }
     member _.SendAsync(cmd) =

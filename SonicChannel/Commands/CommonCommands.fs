@@ -32,15 +32,6 @@ type StartCommand(mode: ChannelMode, password: string option) =
 
 type QuitCommand() =
     inherit ConstantResultCommand() with
-        override _.Response = "OK"
+        override _.Response = "ENDED quit"
         override _.ToCommandString () =
             sprintf "QUIT"
-
-type ConnectCommand() =
-    inherit SonicCommand<unit>() with
-        override _.ToCommandString () = "NO EXEC"
-        override _.HandlePendingMsg _ = failwith "Invalid state pending"
-        override _.MatchResult msg =
-            let regex = Regex("^CONNECTED", regexOpt)
-            tryMatch regex msg
-            |> Option.map ignore

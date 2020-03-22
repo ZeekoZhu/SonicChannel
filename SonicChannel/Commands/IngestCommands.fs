@@ -33,12 +33,12 @@ type CountCommand(collection: string, bucket: string option, object: string opti
                 (defaultEmpty bucket)
                 (defaultEmpty object)
 
-type FlashCommand(collection: string, bucketAndObject: (string * (string option)) option) =
+type FlushCommand(collection: string, bucketAndObject: (string * (string option)) option) =
     inherit IntResultCommand() with
         override _.ToCommandString () =
             let bucket = bucketAndObject |> Option.map fst
             let object = bucketAndObject |> Option.bind snd
-            sprintf "FLASHB %s %s %s"
+            sprintf "FLUSHB %s %s %s"
                 (escapeCmdText collection)
                 (defaultEmpty bucket)
                 (defaultEmpty object)

@@ -6,13 +6,13 @@ open SonicChannel.SonicCommand
 open SonicChannel.SonicCommand.CommandTextBuilder
 
 [<AbstractClass>]
-type ConstantResultCommand() =
+type ConstantResultCommand() as this =
     abstract ToCommandString : unit -> string
     abstract Response : string
     interface ISonicCommand with
         member this.ToCommandString () = this.ToCommandString()
         member _.HandleWaitingMsg msg =
-            if String.Equals(msg, StringComparison.OrdinalIgnoreCase) then
+            if msg.Equals(this.Response, StringComparison.OrdinalIgnoreCase) then
                 SonicCommandState.Finished |> Handled
             else Bypass
         member _.HandlePendingMsg _ = failwith "Invalid state pending"
