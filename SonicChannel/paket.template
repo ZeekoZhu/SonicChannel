@@ -1,0 +1,9 @@
+type project
+id Zeeko.SonicChannel
+version 0.0.1
+description
+    A dotnet implementation of Sonic client
+authors Zeeko
+licenseUrl http://opensource.org/licenses/MIT
+dependencies
+    framework: netstandard21

@@ -13,6 +13,11 @@ ProjectSection(SolutionItems) = preProject
 	paket.lock = paket.lock
 EndProjectSection
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution", "Solution", "{5429C88D-E94C-4FAD-8BE5-C203476366A4}"
+ProjectSection(SolutionItems) = preProject
+	build.fsx = build.fsx
+EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU

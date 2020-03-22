@@ -1,5 +1,5 @@
 storage: none
-version 5.242.2
+version 5.241.2
 source https://api.nuget.org/v3/index.json
 source https://www.myget.org/F/zeekoget/api/v3/index.json
 framework: auto-detect
@@ -23,3 +23,4 @@ group Build
     framework: netstandard2.0
     nuget Fake.DotNet.Cli
     nuget MyFakeTools 0.0.16
+nuget Fake.DotNet.Paket
