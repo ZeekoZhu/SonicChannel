@@ -40,8 +40,12 @@ module Project =
         Paket.pack setOpt
         
 Target.create "build" (ignore >> Project.build)
+Target.create "test" (ignore)
 Target.create "pack" (ignore >> Project.pack)
+
 "build" ==> "pack"
+"build" ==> "test"
+
 Target.useTriggerCI ()
 
 Target.create "empty" ignore
