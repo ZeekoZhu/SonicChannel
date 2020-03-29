@@ -46,6 +46,7 @@ module CommandTextBuilder =
         escapePatterns
         |> List.fold escape text
     let splitTextChunks (bufferSize: int) (encoding: Encoding) (text: string) =
+        if text = null then raise (ArgumentNullException("text"))
         // reserve 50% space for other parts of command
         let chunkSize =
             Math.Floor((float bufferSize) * 0.5) / (float (encoding.GetMaxByteCount(1)))

@@ -15,6 +15,21 @@ nuget Microsoft.Extensions.DependencyInjection
 nuget Microsoft.Extensions.Logging.Abstractions
 nuget Microsoft.Extensions.Logging
 nuget Microsoft.Extensions.Logging.Console
+group Test
+    storage: none
+    source https://api.nuget.org/v3/index.json
+    source https://www.myget.org/F/zeekoget/api/v3/index.json
+    nuget Expecto
+    nuget Expecto.BenchmarkDotNet
+    nuget Expecto.FsCheck
+    nuget Expecto.Hopac
+    nuget Logary.Adapters.Facade prerelease
+    nuget Expecto.VisualStudio.TestAdapter version_in_path: true
+    nuget TaskBuilder.fs
+    nuget FSharpx.Extras
+    nuget FsToolkit.ErrorHandling
+
+nuget bogus
 // [ FAKE GROUP ]
 group Build
     storage: none

@@ -17,6 +17,8 @@ type CommandQueue
         sendMsgFn: string -> Task<unit>,
         logger: ILogger<CommandQueue>
     ) =
+    do if logger = null then
+        failwith "logger is required"
     let mutable disposed = false
     let mutable waiting: SonicCommandCallback option = None
     let mutable mailbox: MailboxProcessor<_> option = None
@@ -75,7 +77,6 @@ type CommandQueue
         |> Option.orElseWith checkPendingQueue
         |> function
         | None ->
-            printfn "unhandled %s" line
             if line.StartsWith ("ENDED", StringComparison.OrdinalIgnoreCase) then
                 logger.LogWarning ("Connection closed by host: {Message}", line)
                 onQuit.Trigger ()
