@@ -1,4 +1,4 @@
-module Tests.CommandTextBuilderTests.EscapeCmdTextTests
+module Tests.CommandTextBuilderTests
 
 open System.Text
 open Expecto

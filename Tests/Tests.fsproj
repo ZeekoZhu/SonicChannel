@@ -8,7 +8,7 @@
     <Content Include="paket.references" />
     <Compile Include="TestRoots.fs" />
     <Compile Include="CommandQueueTests\CtorTests.fs" />
-    <Compile Include="CommandTextBuilderTests\CommandTextBuilderTests.fs" />
+    <Compile Include="CommandTextBuilderTests.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
   <ItemGroup>
