@@ -16,6 +16,7 @@ EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution", "Solution", "{5429C88D-E94C-4FAD-8BE5-C203476366A4}"
 ProjectSection(SolutionItems) = preProject
 	build.fsx = build.fsx
+	README.adoc = README.adoc
 EndProjectSection
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Tests", "Tests\Tests.fsproj", "{3F4D3F18-1BDE-47AE-BCBC-49B027200FE2}"

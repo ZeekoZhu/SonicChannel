@@ -1,0 +1,40 @@
+= Zeeko.SonicChannel
+
+An open-source .NET client implementation for the https://github.com/valeriansaliou/sonic[Sonic] search backend.
+
+[source, fsharp]
+----
+type FooOptionReader() =
+    interface IOptionReader with
+        member _.ConnectionOption() =
+            { Host = "localhost"; Port = 1491; AuthPassword = Some "p@55w0rd" }
+        member _.TransceiverOption () = TransceiverOption.Default
+[<EntryPoint>]
+let main argv =
+    use client = new TcpClient()
+    let loggerFactory =
+        LoggerFactory.Create
+            (fun builder ->
+                    builder.AddConsole().SetMinimumLevel(LogLevel.Debug) |> ignore
+            )
+    use channel = new IngestChannel(client, FooOptionReader(), loggerFactory)
+    task {
+        do! channel.StartAsync()
+        do! channel.PushAsync("c1", "b1", "o1", "hello world", None)
+        do! channel.PushAsync("c1", "b1", "o4", "there is no spoon", None)
+        do! channel.QuitAsync()
+    }
+    |> Async.AwaitTask
+    |> Async.RunSynchronously
+    use client1 = new TcpClient()
+    use channel = new SearchChannel(client1, FooOptionReader(), loggerFactory)
+    task {
+        do! channel.StartAsync()
+        let! result = channel.QueryAsync("c1", "b1", "hello world", None, None, None)
+        printfn "%A" result
+        do! channel.QuitAsync()
+    }
+    |> Async.AwaitTask
+    |> Async.RunSynchronously
+    0 // return an integer exit code
+----
