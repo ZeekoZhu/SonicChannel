@@ -118,10 +118,8 @@ type MessageTransceiver
                         do! writer.WriteLineAsync msg
                         do! writer.FlushAsync()
                     }
-            let commandQueueLogger = loggerFactory.CreateLogger<CommandQueue>()
-            let commandQueue = new CommandQueue(sendMsgFn, commandQueueLogger)
+            let commandQueue = new CommandQueue(sendMsgFn, loggerFactory)
             commandQueue.OnQuit.Add disconnect
-            commandQueue.Initialize()
             let receiveMsgTask () =
                 Util.readLinesAsync
                     stream

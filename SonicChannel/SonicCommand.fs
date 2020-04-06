@@ -82,7 +82,7 @@ type SonicCommandState =
     | Finished
 type MessageHandleResult =
     | Handled of SonicCommandState
-    | Bypass
+    | Ignore
 type ISonicCommand =
     abstract ToCommandString: unit -> string
     abstract HandleWaitingMsg: string -> MessageHandleResult
@@ -102,7 +102,7 @@ type SonicCommand<'r>() =
             | Some result ->
                 this.Result <- Some result
                 Finished |> Handled
-            | None -> Bypass
+            | None -> Ignore
 
         member this.HandlePendingMsg str = this.HandlePendingMsg str
         member this.ToCommandString () = this.ToCommandString ()
@@ -117,6 +117,6 @@ module internal CommandHelper =
         | Some result ->
             this.Result <- Some result
             Finished |> Handled
-        | None -> Bypass
+        | None -> Ignore
 
 

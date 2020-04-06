@@ -14,7 +14,7 @@ type ConstantResultCommand() as this =
         member _.HandleWaitingMsg msg =
             if msg.Equals(this.Response, StringComparison.OrdinalIgnoreCase) then
                 SonicCommandState.Finished |> Handled
-            else Bypass
+            else Ignore
         member _.HandlePendingMsg _ = failwith "Invalid state pending"
 
 [<AbstractClass>]

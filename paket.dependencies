@@ -30,6 +30,7 @@ group Test
     nuget FsToolkit.ErrorHandling
 
 nuget bogus
+nuget Moq.AutoMock
 // [ FAKE GROUP ]
 group Build
     storage: none

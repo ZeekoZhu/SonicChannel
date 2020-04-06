@@ -10,3 +10,4 @@ FSharpx.Extras
 FsToolkit.ErrorHandling
 Expecto.VisualStudio.TestAdapter version_in_path: true
 bogus
+Moq.AutoMock

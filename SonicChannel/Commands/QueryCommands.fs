@@ -22,7 +22,7 @@ type QueryModeCommand() =
             | Some marker ->
                 this.Marker <- Some marker
                 Pending |> Handled
-            | None -> Bypass
+            | None -> Ignore
         member this.HandlePendingMsg msg =
             let marker = this.Marker |> Option.defaultValue ""
             let regex =
@@ -37,7 +37,7 @@ type QueryModeCommand() =
                     |> Array.filter (String.IsNullOrWhiteSpace >> not)
                     |> Some
                 Finished |> Handled
-            | None -> Bypass
+            | None -> Ignore
 
 type QueryCommand
     (
