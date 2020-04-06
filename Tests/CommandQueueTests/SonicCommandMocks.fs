@@ -1,8 +1,9 @@
 module Tests.CommandQueueTests.SonicCommandMocks
 open System
+open System.Threading.Tasks
 open Microsoft.FSharp.Linq.RuntimeHelpers.LeafExpressionConverter
 open Moq
-open Moq.AutoMock
+open SonicChannel
 open SonicChannel.SonicCommand
 
 let toCmdString =
@@ -19,3 +20,7 @@ let handleWaiting =
 
 let createCmdMock () =
     Mock<ISonicCommand>()
+
+let createCallback () =
+    let cmdMock = createCmdMock ()
+    cmdMock, { Command = cmdMock.Object; Callback = TaskCompletionSource(); Marked = false }

@@ -3,6 +3,8 @@ open System
 open System.Collections.Generic
 open System.Threading
 open System.Threading.Tasks
+open System.Timers
+open Configuration
 open FSharp.Control.Tasks.V2.ContextInsensitive
 open FSharpx
 open FSharpx.Collections
@@ -61,7 +63,7 @@ type CommandQueueCore
         | _ -> ()
         let marked =
             pendingList
-            |> List.filter (fun x -> x.Marked)
+            |> List.filter (fun x -> not x.Marked)
         pendingList <- marked
     let timeoutAndMark () =
         let cancelMarked (cb) =
@@ -77,8 +79,14 @@ type CommandQueueCore
         |> Seq.iter mark
         Seq.empty
     let cancelAll () =
-        runningCommands()
-        |> Seq.iter (fun x -> x.Callback.TrySetCanceled() |> ignore)
+        let cancelCb cb =
+            cb.Callback.TrySetCanceled() |> ignore
+        waitingQueue
+        |> Seq.iter (cancelCb)
+        pendingList
+        |> Seq.iter (cancelCb)
+        waitingQueue.Clear()
+        pendingList <- []
         Seq.empty
     let removePending cb =
         pendingList <- pendingList |> List.filter (fun x -> cb <> x)
@@ -116,17 +124,18 @@ type CommandQueueCore
         |> Seq.iter handleAction
     let mailbox =
         MailboxProcessor.Start
-            ( fun (inbox: MailboxProcessor<CommandQueueAction>) ->
+            ( fun (inbox: MailboxProcessor<CommandQueueAction * AsyncReplyChannel<unit>>) ->
                 let rec msgLoop () =
                     async {
-                        let! action = inbox.Receive()
+                        let! (action, reply) = inbox.Receive()
                         handleAction action
+                        reply.Reply()
                         return! msgLoop()
                     }
                 msgLoop()
             , ct)
     member _.Dispatch (act: CommandQueueAction) =
-        mailbox.Post(act)
+        mailbox.PostAndReply(fun rc -> act, rc)
     member _.Waiting
         with get () : SonicCommandCallback option = waiting ()
     member _.PendingList
@@ -205,8 +214,10 @@ and SessionMessageProcessor
 type CommandQueue
     (
         sendMsgFn: string -> Task<unit>,
-        loggerFactory: ILoggerFactory
+        loggerFactory: ILoggerFactory,
+        optReader: IOptionReader
     ) =
+    let opt = optReader.TransceiverOption()
     let logger = loggerFactory.CreateLogger<CommandQueue>()
     let mutable disposed = false
     let cts = new CancellationTokenSource()
@@ -217,11 +228,22 @@ type CommandQueue
     do coreQueue.OnQuit.Add <| fun () ->
         cancelAllTasks()
         onQuitEvent.Trigger()
+    let timeout () =
+        coreQueue.Dispatch TimeoutAndMark
+    let setupTimeout () =
+        let timer = new Timer(float opt.Timeout.Milliseconds)
+        timer.Elapsed.Add (fun _ -> timeout())
+        timer.AutoReset <- true
+        timer.Start()
+        timer
+    let timer = setupTimeout()
     let cleanup (disposing: bool) =
         if not disposed then
             disposed <- true
             if disposing then
                 logger.LogDebug("Command Queue disposed")
+                timer.Stop()
+                timer.Dispose()
                 cts.Dispose()
 
     member _.OnResponseArrived msg =

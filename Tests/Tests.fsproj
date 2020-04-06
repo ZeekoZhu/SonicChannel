@@ -8,8 +8,8 @@
     <Content Include="paket.references" />
     <Compile Include="TestRoots.fs" />
     <Compile Include="CommandQueueTests\SonicCommandMocks.fs" />
-    <Compile Include="CommandQueueTests\CtorTests.fs" />
     <Compile Include="CommandQueueTests\SessionMessageProcessorTests.fs" />
+    <Compile Include="CommandQueueTests\CommandQueueCoreTests.fs" />
     <Compile Include="CommandTextBuilderTests.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>

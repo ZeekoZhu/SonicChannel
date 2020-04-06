@@ -1,5 +1,6 @@
 module SonicChannel.Configuration
 
+open System
 open System.Text
 
 type ChannelConnection =
@@ -9,9 +10,14 @@ type ChannelConnection =
 
 type TransceiverOption =
     { Encoding: Encoding
+      Timeout: TimeSpan
       BufferSize: int }
     with
-        static member Default = { Encoding = UTF8Encoding(false); BufferSize = 1024 * 8 }
+        static member Default =
+            { Encoding = UTF8Encoding(false)
+              BufferSize = 1024 * 8
+              Timeout = TimeSpan.FromMilliseconds(500.0)
+            }
 
 type IOptionReader =
     abstract member ConnectionOption : unit -> ChannelConnection

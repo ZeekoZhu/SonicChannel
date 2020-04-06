@@ -85,5 +85,5 @@ let tests =
             Expect.sequenceEqual result.Value expected "remove pending"
         }
     ]
-    |> ftestList "MsgProcessor"
+    |> testList "MsgProcessor"
     |> labelCmdQueue
