@@ -38,9 +38,21 @@ module Project =
                 LockDependencies = true
             }
         Paket.pack setOpt
-        
+
+    let internal testArgs = sprintf "--project %s --summary"
+    
+    let test () =
+        let projects =
+            [ "Tests" ] |> Seq.map resolveProjectFile
+        let run proj =
+            let result = DotNet.exec id "run" (testArgs proj)
+            if result.ExitCode <> 0 then
+                failwith "test failed"
+        projects
+        |> Seq.iter run
+
 Target.create "build" (ignore >> Project.build)
-Target.create "test" (ignore)
+Target.create "test" (ignore >> Project.test)
 Target.create "pack" (ignore >> Project.pack)
 
 "build" ==> "pack"

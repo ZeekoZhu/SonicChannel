@@ -283,4 +283,5 @@ publish/
 dist
 
 # vscode
-.ionide/
+.fake
+.ionide
