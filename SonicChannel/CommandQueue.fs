@@ -150,16 +150,6 @@ and SessionMessageProcessor
             | Handled state ->
                 Some (cb, state)
 
-        let checkWaiting () =
-            waiting
-            |> Option.bind (fun waiting -> handleMessage waiting waiting.Command.HandleWaitingMsg)
-
-        let checkPendingQueue () =
-            pendingList
-            |> Seq.map (fun cb -> handleMessage cb cb.Command.HandlePendingMsg)
-            |> Seq.tryFind (Option.isSome)
-            |> Option.bind id
-
         let handleWaiting (cb, state) =
             dispatch WaitingHandled
             logger.LogDebug ("Waiting handled {msg}", line)
@@ -168,31 +158,40 @@ and SessionMessageProcessor
                 dispatch (Complete cb)
             | Pending ->
                 dispatch (AddPending cb)
+        let checkWaiting () =
+            let handled =
+                waiting
+                |> Option.bind (fun waiting -> handleMessage waiting waiting.Command.HandleWaitingMsg)
+            match handled with
+            | Some x -> handleWaiting x
+            | None -> ()
+            handled
+
         let handlePending (cb, state) =
             match state with
             | Finished ->
                 dispatch (Complete cb)
                 dispatch (RemovePending cb)
             | _ -> raise (InvalidOperationException("Pending command should finished"))
+        let checkPendingQueue () =
+            let handled =
+                pendingList
+                |> Seq.map (fun cb -> handleMessage cb cb.Command.HandlePendingMsg)
+                |> Seq.tryFind (Option.isSome)
+                |> Option.bind id
+            match handled with
+            | Some x -> handlePending x
+            | None -> ()
+            handled
+
         let checkQuit () =
             if line.StartsWith ("ENDED", StringComparison.OrdinalIgnoreCase) then
                 dispatch Quit
             else
                 logger.LogWarning ("Not handled: {Message}", line)
 
-        let waitingHandled =
-            checkWaiting ()
-        waitingHandled
-        |> Option.iter handleWaiting
-
-        waitingHandled
-        |> Option.orElseWith
-            ( fun () ->
-                let pendingHandled = checkPendingQueue ()
-                pendingHandled
-                |> Option.iter handlePending
-                pendingHandled
-            )
+        checkWaiting ()
+        |> Option.orElseWith ( fun () -> checkPendingQueue ())
         |> function
             | Some _ -> ()
             | None -> checkQuit ()
