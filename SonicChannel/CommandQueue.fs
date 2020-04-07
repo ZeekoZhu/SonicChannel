@@ -98,10 +98,10 @@ type CommandQueueCore
         waitingQueue.Dequeue() |> ignore
         Seq.empty
     let complete cb =
+        cb.Callback.SetResult cb.Command
         match cb.Command with
         | :? QuitCommand -> onQuit.Trigger()
         | _ -> ()
-        cb.Callback.SetResult cb.Command
         Seq.empty
     let quit () =
         onQuit.Trigger ()
@@ -213,7 +213,7 @@ and SessionMessageProcessor
 
 type CommandQueue
     (
-        sendMsgFn: string -> Task<unit>,
+        msgSender: MailboxProcessor<string>,
         loggerFactory: ILoggerFactory,
         optReader: IOptionReader
     ) =
@@ -250,17 +250,15 @@ type CommandQueue
         coreQueue.Dispatch <| Message msg
 
     member _.ExecuteCommandAsync cmd =
-        task {
-            let cb = {
-                Command = cmd
-                Callback = TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously)
-                Marked = false
-            }
-            coreQueue.Dispatch (SetWaiting cb)
-            let msg = cmd.ToCommandString()
-            do! sendMsgFn msg
-            return! cb.Callback.Task
+        let cb = {
+            Command = cmd
+            Callback = TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously)
+            Marked = false
         }
+        coreQueue.Dispatch (SetWaiting cb)
+        let msg = cmd.ToCommandString()
+        msgSender.Post msg
+        cb.Callback.Task
     [<CLIEvent>]
     member _.OnQuit = onQuitEvent.Publish
     member _.CancelAllTask () =

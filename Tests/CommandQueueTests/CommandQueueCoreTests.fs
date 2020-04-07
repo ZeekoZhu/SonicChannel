@@ -121,5 +121,5 @@ let tests =
             expectCancelled cb3.Callback.Task
         }
     ]
-    |> ftestList "CommandQueueCore"
+    |> testList "CommandQueueCore"
     |> labelCmdQueue

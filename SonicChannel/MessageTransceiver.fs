@@ -62,6 +62,7 @@ type TransceiverContext =
     { Stream: NetworkStream
       Writer: StreamWriter
       CommandQueue: CommandQueue
+      MessageSender: MailboxProcessor<string>
     }
     with member this.Dispose() =
             this.Writer.Dispose()
@@ -82,6 +83,15 @@ type MessageTransceiver
     let encoding = opt.Encoding
     let cts = new CancellationTokenSource()
 
+    let sendMsg (writer: StreamWriter) (inbox: MailboxProcessor<string>) =
+        let rec sendLoop () =
+            async {
+                let! msg = inbox.Receive()
+                do! writer.WriteLineAsync msg |> Async.AwaitTask
+                do! writer.FlushAsync() |> Async.AwaitTask
+                return! sendLoop()
+            }
+        sendLoop()
     let disconnect () =
         if not disposed && client.Connected then
             cts.Cancel()
@@ -110,15 +120,8 @@ type MessageTransceiver
                 do! client.ConnectAsync(connOpt.Host, connOpt.Port)
             let stream = client.GetStream()
             let writer = new StreamWriter(stream, encoding, bufferSize, true)
-            let sendMsgFn (msg: string) =
-                logger.LogDebug("Send: {Message}", msg)
-                if msg = "NO EXEC" then Task.FromResult()
-                else
-                    task {
-                        do! writer.WriteLineAsync msg
-                        do! writer.FlushAsync()
-                    }
-            let commandQueue = new CommandQueue(sendMsgFn, loggerFactory, optionReader)
+            let msgSender = MailboxProcessor.Start (sendMsg writer, cts.Token)
+            let commandQueue = new CommandQueue(msgSender, loggerFactory, optionReader)
             commandQueue.OnQuit.Add disconnect
             let receiveMsgTask () =
                 Util.readLinesAsync
@@ -128,7 +131,12 @@ type MessageTransceiver
                     cts.Token
             Task.Run<unit> (Func<Task<unit>> receiveMsgTask)
             |> ignore
-            state <- Some { Stream = stream; Writer = writer; CommandQueue = commandQueue }
+            state <- Some {
+                Stream = stream
+                Writer = writer
+                CommandQueue = commandQueue
+                MessageSender = msgSender
+            }
         }
     member _.SendAsync(cmd) =
         let state = ensureInitialized ()
