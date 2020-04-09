@@ -5,7 +5,6 @@ open System.Threading
 open System.Threading.Tasks
 open System.Timers
 open Configuration
-open FSharp.Control.Tasks.V2.ContextInsensitive
 open FSharpx
 open FSharpx.Collections
 open Microsoft.Extensions.Logging
@@ -53,7 +52,6 @@ type CommandQueueCore
         }
     let setWaiting (cb: SonicCommandCallback) =
         waitingQueue.Enqueue cb
-        logger.LogDebug <| sprintf "set waiting %s" (cb.Command.ToCommandString())
         Seq.empty
 
     let removeMarked () =
@@ -61,14 +59,14 @@ type CommandQueueCore
         | Some x when x.Marked ->
             waitingQueue.Dequeue () |> ignore
         | _ -> ()
-        let marked =
+        let notMarked =
             pendingList
             |> List.filter (fun x -> not x.Marked)
-        pendingList <- marked
+        pendingList <- notMarked
     let timeoutAndMark () =
         let cancelMarked (cb) =
             if cb.Marked then
-                cb.Callback.TrySetCanceled()
+                cb.Callback.TrySetException (TimeoutException(cb.Command.ToCommandString()))
                 |> ignore
         let mark cb =
             cb.Marked <- true
@@ -80,7 +78,7 @@ type CommandQueueCore
         Seq.empty
     let cancelAll () =
         let cancelCb cb =
-            cb.Callback.TrySetCanceled() |> ignore
+            cb.Callback.TrySetException (OperationCanceledException(cb.Command.ToCommandString())) |> ignore
         waitingQueue
         |> Seq.iter (cancelCb)
         pendingList
@@ -98,19 +96,18 @@ type CommandQueueCore
         waitingQueue.Dequeue() |> ignore
         Seq.empty
     let complete cb =
+        cb.Callback.SetResult cb.Command
         match cb.Command with
         | :? QuitCommand -> onQuit.Trigger()
         | _ -> ()
-        cb.Callback.SetResult cb.Command
         Seq.empty
     let quit () =
         onQuit.Trigger ()
         Seq.empty
-    let message str =
+    let message (str: string) =
         msgProcessor.ProcessMessage (waiting(), pendingList |> Seq.ofList) str
         |> Option.getOrElse Seq.empty
     let rec handleAction (act: CommandQueueAction) =
-        logger.LogDebug <| sprintf "Handle action %A" act
         match act with
         | SetWaiting value -> setWaiting value
         | WaitingHandled -> waitingHandled ()
@@ -134,8 +131,12 @@ type CommandQueueCore
                     }
                 msgLoop()
             , ct)
+    do mailbox.Error.Add (fun err -> logger.LogError (err, "CoreQueue Error"))
     member _.Dispatch (act: CommandQueueAction) =
-        mailbox.PostAndReply(fun rc -> act, rc)
+        mailbox.PostAndAsyncReply(fun rc -> act, rc)
+        |> Async.Start
+    member _.DispatchAsync (act: CommandQueueAction) =
+        mailbox.PostAndAsyncReply(fun rc -> act, rc)
     member _.Waiting
         with get () : SonicCommandCallback option = waiting ()
     member _.PendingList
@@ -161,7 +162,6 @@ and SessionMessageProcessor
 
         let handleWaiting (cb, state) =
             dispatch WaitingHandled
-            logger.LogDebug ("Waiting handled {msg}", line)
             match state with
             | Finished ->
                 dispatch (Complete cb)
@@ -213,7 +213,7 @@ and SessionMessageProcessor
 
 type CommandQueue
     (
-        sendMsgFn: string -> Task<unit>,
+        msgSender: MailboxProcessor<string>,
         loggerFactory: ILoggerFactory,
         optReader: IOptionReader
     ) =
@@ -231,9 +231,13 @@ type CommandQueue
     let timeout () =
         coreQueue.Dispatch TimeoutAndMark
     let setupTimeout () =
-        let timer = new Timer(float opt.Timeout.Milliseconds)
-        timer.Elapsed.Add (fun _ -> timeout())
-        timer.AutoReset <- true
+        let timer = new Timer(float opt.Timeout.TotalMilliseconds)
+        timer.AutoReset <- false
+        timer.Elapsed.Add
+            ( fun _ ->
+                timeout()
+                timer.Start()
+            )
         timer.Start()
         timer
     let timer = setupTimeout()
@@ -241,7 +245,7 @@ type CommandQueue
         if not disposed then
             disposed <- true
             if disposing then
-                logger.LogDebug("Command Queue disposed")
+                logger.LogInformation("Command Queue disposed")
                 timer.Stop()
                 timer.Dispose()
                 cts.Dispose()
@@ -250,16 +254,16 @@ type CommandQueue
         coreQueue.Dispatch <| Message msg
 
     member _.ExecuteCommandAsync cmd =
-        task {
-            let cb = {
-                Command = cmd
-                Callback = TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously)
-                Marked = false
-            }
-            coreQueue.Dispatch (SetWaiting cb)
+        let cb = {
+            Command = cmd
+            Callback = TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously)
+            Marked = false
+        }
+        async {
+            do! coreQueue.DispatchAsync (SetWaiting cb)
             let msg = cmd.ToCommandString()
-            do! sendMsgFn msg
-            return! cb.Callback.Task
+            msgSender.Post msg
+            return! cb.Callback.Task |> Async.AwaitTask
         }
     [<CLIEvent>]
     member _.OnQuit = onQuitEvent.Publish

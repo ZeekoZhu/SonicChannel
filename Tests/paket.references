@@ -8,6 +8,7 @@ Logary.Adapters.Facade
 TaskBuilder.fs
 FSharpx.Extras
 FsToolkit.ErrorHandling
+Microsoft.Extensions.Logging.Console
 Expecto.VisualStudio.TestAdapter version_in_path: true
 bogus
 Moq.AutoMock

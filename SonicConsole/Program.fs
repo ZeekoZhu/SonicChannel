@@ -13,13 +13,12 @@ type FooOptionReader() =
         member _.TransceiverOption () = TransceiverOption.Default
 [<EntryPoint>]
 let main argv =
-    use client = new TcpClient()
     let loggerFactory =
         LoggerFactory.Create
             (fun builder ->
                     builder.AddConsole().SetMinimumLevel(LogLevel.Debug) |> ignore
             )
-    use channel = new IngestChannel(client, FooOptionReader(), loggerFactory)
+    use channel = new IngestChannel(FooOptionReader(), loggerFactory)
     task {
         do! channel.StartAsync()
         do! channel.PushAsync("c1", "b1", "o1", "hello world", None)
@@ -31,7 +30,7 @@ let main argv =
     |> Async.AwaitTask
     |> Async.RunSynchronously
     use client1 = new TcpClient()
-    use channel = new SearchChannel(client1, FooOptionReader(), loggerFactory)
+    use channel = new SearchChannel(FooOptionReader(), loggerFactory)
     task {
         do! channel.StartAsync()
         let! result = channel.QueryAsync("c1", "b1", "hello world", None, None, None)

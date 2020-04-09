@@ -4,7 +4,6 @@ open System.Text
 open Expecto
 open FsCheck
 open SonicChannel.SonicCommand
-open Tests
 
 [<Tests>]
 let escapeCmdTests =
@@ -29,7 +28,7 @@ let escapeCmdTests =
        }
    ]
    |> testList "escapeCmdTest"
-   |> labelCmdTextBuilder
+   |> unitTest
 
 let bSize = 50
 let encoding = Encoding.UTF8
@@ -81,4 +80,4 @@ let splitTextChunksProps =
         }
     ]
     |> testList "splitTextChunks"
-    |> labelCmdTextBuilder
+    |> unitTest

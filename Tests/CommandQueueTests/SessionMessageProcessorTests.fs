@@ -5,7 +5,6 @@ open Expecto
 open Microsoft.Extensions.Logging.Abstractions
 open SonicChannel
 open SonicChannel.SonicCommand
-open Tests
 open Tests.CommandQueueTests.SonicCommandMocks
 
 let logger = NullLogger<SessionMessageProcessor>()
@@ -86,4 +85,4 @@ let tests =
         }
     ]
     |> testList "MsgProcessor"
-    |> labelCmdQueue
+    |> testLabel "Unit"
