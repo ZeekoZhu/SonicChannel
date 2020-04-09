@@ -1,7 +1,6 @@
 namespace SonicChannel
 
 open System
-open System.Net.Sockets
 open System.Threading.Tasks
 open Commands.ControlCommand
 open Commands.IngestCommands
@@ -16,14 +15,13 @@ open SonicChannel.SonicCommand
 [<AbstractClass>]
 type SonicChannel
     (
-        client: TcpClient,
         optionReader: IOptionReader,
         loggerFactory: ILoggerFactory
     ) as this =
     let connOpt = optionReader.ConnectionOption ()
     let mutable disposed = false
     let mutable started = false;
-    let transceiver = new MessageTransceiver(client, optionReader, loggerFactory)
+    let transceiver = new MessageTransceiver(optionReader, loggerFactory)
     let cleanup disposing =
         if not disposed then
             disposed <- true
@@ -56,8 +54,8 @@ type SonicChannel
             cleanup true
             GC.SuppressFinalize this
 
-type IngestChannel(client, optionReader, loggerFactory) as this =
-    inherit SonicChannel(client, optionReader, loggerFactory)
+type IngestChannel(optionReader, loggerFactory) as this =
+    inherit SonicChannel(optionReader, loggerFactory)
     let transOpt = optionReader.TransceiverOption()
     let splitText text =
         let config = this.EnsureStarted()
@@ -109,8 +107,8 @@ type IngestChannel(client, optionReader, loggerFactory) as this =
             return cmd.Result.Value
         }
 
-type SearchChannel(client, optionReader, loggerFactory) as this =
-    inherit SonicChannel(client, optionReader, loggerFactory)
+type SearchChannel(optionReader, loggerFactory) as this =
+    inherit SonicChannel(optionReader, loggerFactory)
     override _.StartAsync() =
         base.StartAsync(ChannelMode.Search)
     member _.QueryAsync
@@ -140,8 +138,8 @@ type SearchChannel(client, optionReader, loggerFactory) as this =
             return cmd.Result.Value
         }
 
-type ControlChannel(client, optionReader, loggerFactory) as this =
-    inherit SonicChannel(client, optionReader, loggerFactory)
+type ControlChannel(optionReader, loggerFactory) as this =
+    inherit SonicChannel(optionReader, loggerFactory)
     override _.StartAsync() =
         base.StartAsync(ChannelMode.Control)
     member _.TriggerAsync

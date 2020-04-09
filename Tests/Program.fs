@@ -1,5 +1,4 @@
 ﻿open Expecto
-
 [<EntryPoint>]
 let main argv =
     Impl.testFromThisAssembly()

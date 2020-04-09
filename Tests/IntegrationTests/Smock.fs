@@ -1,0 +1,2 @@
+module Tests.IntegrationTests.Smock
+

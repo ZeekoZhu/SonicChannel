@@ -23,14 +23,14 @@ group Test
     nuget Expecto.BenchmarkDotNet
     nuget Expecto.FsCheck
     nuget Expecto.Hopac
-    nuget Logary.Adapters.Facade prerelease
     nuget Expecto.VisualStudio.TestAdapter version_in_path: true
-    nuget TaskBuilder.fs
     nuget FSharpx.Extras
     nuget FsToolkit.ErrorHandling
-
-nuget bogus
-nuget Moq.AutoMock
+    nuget Logary.Adapters.Facade prerelease
+    nuget Microsoft.Extensions.Logging.Console
+    nuget Moq.AutoMock
+    nuget TaskBuilder.fs
+    nuget bogus
 // [ FAKE GROUP ]
 group Build
     storage: none
