@@ -1,6 +1,5 @@
 module Tests.IntegrationTests.SmokeTests
 
-open System.Threading
 open System.Threading.Tasks
 open Expecto
 open Expecto.Logging
@@ -14,8 +13,6 @@ open Tests
 open Tests.IntegrationTests
 
 let testLogger = Log.create "MyTests"
-let worker, io = ThreadPool.GetMaxThreads()
-testLogger.info (Message.eventX "Threads: {worker} {io}" >> Message.setField "worker" worker >> Message.setField "io" io)
 
 type FooOptionReader() =
     interface IOptionReader with
