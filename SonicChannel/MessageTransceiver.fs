@@ -30,7 +30,6 @@ module Util =
         let onLineReceived = deps.ProcessMessage
         task {
             let mutable completed = false
-            let mutable readCnt = 0L
             try
                 while not ct.IsCancellationRequested && not completed do
                     let readTask = reader.ReadAsync(ct)
@@ -38,7 +37,6 @@ module Util =
                     completed <- readResult.IsCompleted
                     let buffer = readResult.Buffer
                     if not completed && buffer.Length > 0L then
-                        readCnt <- buffer.Length
                         let position = buffer.PositionOf(byte '\n')
                         if position.HasValue then
                             let bufferRead = buffer.Slice(0, position.Value).ToArray()
@@ -129,7 +127,7 @@ type MessageTransceiver
             let stream = new NetworkStream(socket, false)
             let writer = new StreamWriter(stream, encoding, bufferSize, true)
             let msgSender = MailboxProcessor.Start (sendMsg writer, cts.Token)
-            msgSender.Error.Add raise
+            msgSender.Error.Add (fun err -> logger.LogError (err, "Transceiver Error"))
             let commandQueue = new CommandQueue(msgSender, loggerFactory, optionReader)
             commandQueue.OnQuit.Add disconnect
             state <- Some {

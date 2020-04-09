@@ -1,7 +1,6 @@
 namespace SonicChannel
 open System
 open System.Collections.Generic
-open System.Diagnostics
 open System.Threading
 open System.Threading.Tasks
 open System.Timers
@@ -246,7 +245,7 @@ type CommandQueue
         if not disposed then
             disposed <- true
             if disposing then
-                logger.LogDebug("Command Queue disposed")
+                logger.LogInformation("Command Queue disposed")
                 timer.Stop()
                 timer.Dispose()
                 cts.Dispose()

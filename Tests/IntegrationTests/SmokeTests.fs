@@ -88,7 +88,7 @@ let searchTests =
             ]
         yield! searchCases |> List.map (searchWith)
     ]
-    |> ftestList "search"
+    |> testList "search"
     |> testSequenced
 
 [<Tests>]

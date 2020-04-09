@@ -14,7 +14,6 @@
     <Content Include="IntegrationTests\docker-compose.yaml" />
     <Content Include="IntegrationTests\sonic.cfg" />
     <Compile Include="IntegrationTests\Documents.fs" />
-    <Compile Include="IntegrationTests\Smock.fs" />
     <Compile Include="IntegrationTests\SmokeTests.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
