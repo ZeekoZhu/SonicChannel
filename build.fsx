@@ -19,7 +19,7 @@ module Project =
             "SonicConsole"
         ]
         |> Seq.map resolveProjectFile
-    
+
     let packages =
         [
             SonicChannel
@@ -39,24 +39,51 @@ module Project =
             }
         Paket.pack setOpt
 
-    let internal testArgs = sprintf "--project %s --summary"
-    
-    let test () =
-        let projects =
-            [ "Tests" ] |> Seq.map resolveProjectFile
-        let run proj =
-            let result = DotNet.exec id "run" (testArgs proj)
-            if result.ExitCode <> 0 then
-                failwith "test failed"
-        projects
-        |> Seq.iter run
+
+    module Tests =
+        let private testArgs proj = 
+            [ 
+                "--project"; proj
+                "--summary"
+                "--no-spinner"
+                "--fail-on-focused-tests"
+            ]
+        let private filterTests filter proj =
+            testArgs proj @ [
+                "--filter"; filter
+            ]
+        let private unitTestArgs =
+            filterTests "Unit"
+        let private smokeTestArgs =
+            filterTests "Smoke"
+        let private toCmd fn p =
+            fn p
+            |> String.concat " "
+        let private runTestProjects runCmd =
+            let projects =
+                [ "Tests" ] |> Seq.map resolveProjectFile
+            let run proj =
+                let result = DotNet.exec id "run" (runCmd proj)
+                if result.ExitCode <> 0 then
+                    failwith "test failed"
+            projects
+            |> Seq.iter run
+
+        let unitTest () =
+            runTestProjects (toCmd unitTestArgs)
+        let smokeTest () =
+            runTestProjects (toCmd smokeTestArgs)
+
 
 Target.create "build" (ignore >> Project.build)
-Target.create "test" (ignore >> Project.test)
+Target.create "test:unit" (ignore >> Project.Tests.unitTest)
+Target.create "test:smoke" (ignore >> Project.Tests.smokeTest)
+Target.create "test" ignore
 Target.create "pack" (ignore >> Project.pack)
 
 "build" ==> "pack"
-"build" ==> "test"
+"build" ==> "test:unit" ==> "test"
+"build" ==> "test:smoke" ==> "test"
 
 Target.useTriggerCI ()
 

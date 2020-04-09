@@ -2,6 +2,14 @@
 
 An open-source .NET client implementation for the https://github.com/valeriansaliou/sonic[Sonic] search backend.
 
+== To Do
+
+* [ ] Integration Tests
+* [ ] Configuration
+* [ ] Dependency Injection
+
+== Example
+
 [source, fsharp]
 ----
 type FooOptionReader() =

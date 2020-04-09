@@ -6,11 +6,11 @@ open Expecto
 open Expecto.Logging
 open FSharpx
 open FSharpx.Collections
-open Microsoft.Extensions.Logging
 open Microsoft.Extensions.Logging.Abstractions
 open SonicChannel
 open SonicChannel.Configuration
 open FSharp.Control.Tasks.V2.ContextInsensitive
+open Tests
 open Tests.IntegrationTests
 
 let testLogger = Log.create "MyTests"
@@ -97,6 +97,7 @@ let tests =
         ingestTests
         searchTests
     ]
-    |> testList "SmokeTests"
+    |> testList "SonicChannel"
     |> testSequenced
+    |> smokeTest
 

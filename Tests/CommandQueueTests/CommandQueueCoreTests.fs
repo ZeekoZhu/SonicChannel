@@ -122,4 +122,4 @@ let tests =
         }
     ]
     |> testList "CommandQueueCore"
-    |> labelCmdQueue
+    |> unitTest
